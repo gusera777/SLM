@@ -211,6 +211,7 @@ textarea{width:100%;height:110px;background:var(--panel-alt);color:var(--text);b
 
 .disclaimer{padding:14px 20px 26px 20px;padding-bottom:calc(26px + var(--safe-b));color:var(--text-dim);font-size:10.5px;line-height:1.6;max-width:1600px;margin:0 auto;}
 .disclaimer b{color:var(--text-muted);}
+.footerCopy{text-align:center;color:var(--text-dim);font-size:10.5px;letter-spacing:.02em;padding:0 20px calc(18px + var(--safe-b)) 20px;opacity:.75;}
 
 .statusMsg{font-size:11px;padding:9px 10px;border-radius:7px;margin-top:10px;display:none;line-height:1.5;}
 .statusMsg.show{display:block;}
