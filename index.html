@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>GUSERA · SATS — Self-Aware Trend System</title>
+<meta name="description" content="GUSERA SATS — alat bantu analisa trend Adaptive SuperTrend + Trend Quality Index, live dari Twelve Data, berjalan langsung di browser Anda.">
+
+<!-- Theming / iOS Safari & home-screen app behaviour -->
+<meta name="theme-color" content="#0A0C0F">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GUSERA SATS">
+<meta name="format-detection" content="telephone=no">
+
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"><img src="logo-header.png" alt="GUSERA" width="36" height="36" loading="eager"></div>
+    <div class="txt">
+      <div class="name wordmark">GUSERA <span style="color:var(--gold-bright)">SATS</span></div>
+      <div class="sub">Self-Aware Trend System · Web</div>
+    </div>
+  </div>
+
+  <div class="pill"><span class="dot" id="connDot"></span><span id="connText">Belum terhubung</span></div>
+  <select id="symbolSel" aria-label="Simbol">
+    <option value="XAU/USD" selected>XAU/USD — Emas</option>
+    <option value="EUR/USD">EUR/USD</option>
+    <option value="GBP/USD">GBP/USD</option>
+    <option value="BTC/USD">BTC/USD</option>
+  </select>
+  <select id="tfSel" aria-label="Timeframe">
+    <option value="1min">1 menit</option>
+    <option value="5min">5 menit</option>
+    <option value="15min" selected>15 menit</option>
+    <option value="30min">30 menit</option>
+    <option value="1h">1 jam</option>
+    <option value="4h">4 jam</option>
+    <option value="1day">1 hari</option>
+  </select>
+  <button id="startBtn" class="primary">▶ Mulai</button>
+  <button id="settingsBtn">⚙ Pengaturan</button>
+</header>
+
+<div class="layout">
+
+  <!-- ══ LEFT: CHART ══ -->
+  <div>
+    <div class="card" id="chartCard">
+      <div class="chartHead">
+        <div>
+          <div class="priceNow" id="priceNow">—</div>
+          <div style="font-size:11px;color:var(--text-dim)" id="priceSub">Klik Mulai untuk memuat data</div>
+        </div>
+        <div class="trendTag" id="trendTag" style="background:#1c2027;color:var(--text-dim);border:1px solid var(--border)">MENUNGGU DATA</div>
+      </div>
+      <div id="chartWrap"><canvas id="chartCanvas"></canvas></div>
+      <div class="statusMsg" id="statusMsg"></div>
+    </div>
+
+    <div class="card" id="logCard" style="margin-top:14px;">
+      <h3>
+        <span>Riwayat Sinyal <span id="logCount" style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">0 sinyal</span></span>
+        <span class="h3actions">
+          <button id="downloadHistoryBtn" class="small" type="button" title="Unduh riwayat sebagai CSV">⬇ Unduh CSV</button>
+          <button id="resetBtn" class="small danger" type="button" title="Reset data & riwayat">↺ Reset</button>
+        </span>
+      </h3>
+      <p class="hint" style="margin-top:-4px;">Catatan: engine menghitung ulang dari nol setiap siklus dari candle yang ter-fetch saja (maks 500 bar) — riwayat ini bukan log permanen sepanjang sesi, dan sinyal lama otomatis hilang begitu candle sumbernya keluar dari jendela data.</p>
+      <div class="tableScroll">
+      <table>
+        <thead><tr>
+          <th>Waktu</th><th>Sisi</th><th>Harga</th><th>Skor</th><th>Purity</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Status</th><th>R</th>
+        </tr></thead>
+        <tbody id="logBody"></tbody>
+      </table>
+      <div id="logEmpty">Belum ada sinyal. Sinyal baru akan muncul di sini otomatis saat trend berbalik arah. Riwayat menyimpan maksimal 100 sinyal terakhir.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: SIDEBAR ══ -->
+  <div>
+    <div class="card">
+      <h3>Purity Gauge <span id="tqiRegime" style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">—</span></h3>
+      <div class="gaugeRow">
+        <canvas id="gaugeCanvas" width="96" height="96"></canvas>
+        <div>
+          <div class="gaugeVal" id="tqiVal">—</div>
+          <div class="gaugeLabel">Trend Quality Index (0–1)</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="factorRow"><div class="name">Efficiency</div><div class="factorBar"><span id="fEr" style="width:0%"></span></div><div class="factorVal" id="fErV">—</div></div>
+        <div class="factorRow"><div class="name">Volatilitas</div><div class="factorBar"><span id="fVol" style="width:0%"></span></div><div class="factorVal" id="fVolV">—</div></div>
+        <div class="factorRow"><div class="name">Struktur</div><div class="factorBar"><span id="fStruct" style="width:0%"></span></div><div class="factorVal" id="fStructV">—</div></div>
+        <div class="factorRow"><div class="name">Momentum</div><div class="factorBar"><span id="fMom" style="width:0%"></span></div><div class="factorVal" id="fMomV">—</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3>Posisi Aktif <span class="statusPill flat" id="posStatus">FLAT</span></h3>
+      <div class="tradeRow"><div class="k">Entry</div><div class="v" id="tEntry">—</div></div>
+      <div class="tradeRow"><div class="k">Stop Loss</div><div class="v" id="tSl">—</div></div>
+      <div class="tradeRow"><div class="k">Take Profit 1</div><div class="v" id="tTp1">—</div></div>
+      <div class="tradeRow"><div class="k">Take Profit 2</div><div class="v" id="tTp2">—</div></div>
+      <div class="tradeRow"><div class="k">Take Profit 3</div><div class="v" id="tTp3">—</div></div>
+      <div class="tradeRow"><div class="k">Mode TP</div><div class="v" id="tMode">—</div></div>
+      <div class="tradeRow"><div class="k">Skor Sinyal</div><div class="v" id="tScore">—</div></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3>Statistik Performa</h3>
+      <div class="statGrid">
+        <div class="statBox"><div class="k">Win rate</div><div class="v" id="sWinRate">—</div></div>
+        <div class="statBox"><div class="k">Avg R</div><div class="v" id="sAvgR">—</div></div>
+        <div class="statBox"><div class="k">Sampel</div><div class="v" id="sCount">—</div></div>
+        <div class="statBox"><div class="k">Streak</div><div class="v" id="sStreak">—</div></div>
+      </div>
+      <p style="font-size:10px;color:var(--text-dim);margin:10px 0 0 0;line-height:1.5;">Model kinerja disederhanakan (exit sepertiga-sepertiga di TP1/TP2/TP3, sisa kena SL). Bukan simulasi akun riil.</p>
+    </div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  <b>Disclaimer:</b> GUSERA SATS adalah alat bantu analisa teknikal berbasis logic Adaptive SuperTrend + Trend Quality Index, dijalankan sepenuhnya di browser Anda. Ini <b>bukan nasihat keuangan</b> dan tidak melakukan eksekusi order otomatis ke broker manapun — semua sinyal harus dikonfirmasi ulang oleh Anda sebelum entry. Data harga bersumber dari API pihak ketiga (Twelve Data) dan bisa terlambat/berbeda dari harga broker Anda. Trading XAUUSD memiliki risiko kerugian modal.
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 class="wordmark">Pengaturan</h2>
+    <p class="hint">Isi API key Twelve Data milik Anda sendiri (gratis di <b>twelvedata.com</b>) untuk data live — key hanya disimpan di browser Anda (localStorage), tidak dikirim ke server manapun selain Twelve Data. Tidak punya key? Pakai tab <b>Mode CSV</b>, tidak perlu key sama sekali.</p>
+
+    <div class="tabBar">
+      <button class="tabBtn active" data-tab="live">Data Live</button>
+      <button class="tabBtn" data-tab="strategy">Strategi</button>
+      <button class="tabBtn" data-tab="alert">Alert</button>
+      <button class="tabBtn" data-tab="csv">Mode CSV</button>
+    </div>
+
+    <div class="tabPane active" data-pane="live">
+      <div class="formGroup">
+        <label>Twelve Data API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="tempel API key di sini" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="formRow2">
+        <div class="formGroup"><label>Interval refresh</label>
+          <select id="refreshSel">
+            <option value="20000">Setiap 20 detik</option>
+            <option value="30000" selected>Setiap 30 detik</option>
+            <option value="60000">Setiap 1 menit</option>
+            <option value="120000">Setiap 2 menit</option>
+          </select>
+        </div>
+        <div class="formGroup"><label>Jumlah candle diambil</label>
+          <input type="number" id="outputSizeInput" value="300" min="100" max="500" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <div class="tabPane" data-pane="strategy">
+      <div class="formGroup"><label>Preset</label>
+        <select id="presetSel">
+          <option value="Auto" selected>Auto (menyesuaikan timeframe)</option>
+          <option value="Scalping">Scalping</option>
+          <option value="Default">Default</option>
+          <option value="Swing">Swing</option>
+        </select>
+      </div>
+      <div class="formRow2">
+        <div class="formGroup"><label>Mode Take Profit</label>
+          <select id="tpModeSel">
+            <option value="Fixed">Fixed (R tetap)</option>
+            <option value="Dynamic" selected>Dynamic (ikut Purity/Vol)</option>
+          </select>
+        </div>
+        <div class="formGroup"><label>Quality Influence (0–1)</label>
+          <input type="number" id="qualityStrengthInput" value="0.4" step="0.05" min="0" max="1" inputmode="decimal">
+        </div>
+      </div>
+      <div class="toggleRow"><span>Asymmetric Bands</span><label class="switch"><input type="checkbox" id="asymToggle" checked><span class="slider"></span></label></div>
+      <div class="toggleRow"><span>Character-Flip Detection</span><label class="switch"><input type="checkbox" id="charFlipToggle" checked><span class="slider"></span></label></div>
+      <div class="toggleRow"><span>Efficiency-Weighted ATR</span><label class="switch"><input type="checkbox" id="effAtrToggle" checked><span class="slider"></span></label></div>
+      <div class="toggleRow"><span>Breakeven-Stop setelah TP1</span><label class="switch"><input type="checkbox" id="breakevenToggle"><span class="slider"></span></label></div>
+      <p class="hint" style="margin-top:-4px;">Kalau aktif: setelah TP1 kena, sisa posisi dianggap distop di breakeven (0R) bukan di SL awal (-1R) — mensimulasikan praktik trailing-stop umum. Default mati, mengikuti model realized-R yang lebih konservatif.</p>
+    </div>
+
+    <div class="tabPane" data-pane="alert">
+      <div class="toggleRow"><span>Notifikasi browser saat sinyal baru</span><label class="switch"><input type="checkbox" id="notifToggle" checked><span class="slider"></span></label></div>
+      <div class="toggleRow"><span>Bunyi alert saat sinyal baru</span><label class="switch"><input type="checkbox" id="soundToggle" checked><span class="slider"></span></label></div>
+      <p class="hint" style="margin-top:14px;">Di iPhone/Safari, notifikasi browser untuk situs biasa tidak didukung penuh — bunyi alert akan tetap berfungsi setelah Anda menyentuh layar sekali.</p>
+    </div>
+
+    <div class="tabPane" data-pane="csv">
+      <p class="hint" style="margin-top:0;">Fallback kalau live fetch gagal (CORS/limit API). Format tiap baris: <code>time,open,high,low,close,volume</code> (volume boleh 0), urut dari lama ke baru.</p>
+      <textarea id="csvInput" placeholder="2026-07-01 09:00,2330.1,2332.4,2329.0,2331.8,0
+2026-07-01 09:15,2331.8,2333.0,2330.5,2332.2,0" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+      <div style="margin-top:10px;"><button id="csvLoadBtn">Muat dari CSV (sekali jalan, tanpa auto-refresh)</button></div>
+    </div>
+
+    <div id="modalStatus" class="statusMsg"></div>
+
+    <div class="modalActions">
+      <button id="closeModalBtn">Tutup</button>
+      <button id="saveStartBtn" class="primary">Simpan &amp; Mulai</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
