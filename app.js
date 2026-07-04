@@ -1,9 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   GUSERA · SATS — Self-Aware Trend System (web port)
-   Port dari Pine Script v6 "Self-Aware Trend System [GUSERA]"
-   Semua komputasi berjalan client-side di browser.
-   ═══════════════════════════════════════════════════════════ */
-
 const CONST = {
   MAX_HISTORY_SIGS: 100,
   BYPASS_SCORE: 12.0, MULT_SMOOTH_ALPHA: 0.15,
